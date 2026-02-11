@@ -15,6 +15,7 @@ This project is a mini AI workflow system built using:
 
 ## System Architecture
 
+```
 Streamlit (Frontend)
         ↓
 FastAPI Backend
@@ -30,7 +31,7 @@ Groq API (Insights)
 Google Sheets (Append Row)
         ↓
 Email to User
-
+```
 ---
 
 ## Required API Keys
