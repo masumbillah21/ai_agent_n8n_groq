@@ -1,0 +1,198 @@
+{
+  "name": "AI Article Processor - Groq",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "article-processor",
+        "responseMode": "onReceived"
+      },
+      "id": "1",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        240,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{$json[\"article_url\"]}}",
+        "options": {}
+      },
+      "id": "2",
+      "name": "HTTP Scrape",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        480,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.groq.com/openai/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{$env.GROQ_API_KEY}}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"llama-3.1-8b-instant\",\n  \"messages\": [\n    {\n      \"role\": \"user\",\n      \"content\": \"Summarize this article:\\n\\n\" + ($json[\"body\"] || $json[\"data\"] || JSON.stringify($json))\n    }\n  ]\n}",
+        "options": {}
+      },
+      "id": "3",
+      "name": "Groq Summarize",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        720,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.groq.com/openai/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{$env.GROQ_API_KEY}}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"llama-3.1-8b-instant\",\n  \"messages\": [\n    {\n      \"role\": \"user\",\n      \"content\": \"Create 3 key insights from this summary:\\n\\n\" + $json[\"choices\"][0][\"message\"][\"content\"]\n    }\n  ]\n}",
+        "options": {}
+      },
+      "id": "4",
+      "name": "Groq Insights",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        960,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": "",
+        "sheetName": "",
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "email": "={{$node[\"Webhook\"].json[\"email\"]}}",
+            "session_id": "={{$node[\"Webhook\"].json[\"session_id\"]}}",
+            "insights": "={{$json[\"choices\"][0][\"message\"][\"content\"]}}"
+          }
+        },
+        "options": {}
+      },
+      "id": "5",
+      "name": "Google Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1200,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "fromEmail": "",
+        "toEmail": "={{$node[\"Webhook\"].json[\"email\"]}}",
+        "subject": "Article Insights Ready",
+        "text": "={{$json[\"choices\"][0][\"message\"][\"content\"]}}",
+        "options": {}
+      },
+      "id": "6",
+      "name": "Send Email",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        1440,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "HTTP Scrape",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Scrape": {
+      "main": [
+        [
+          {
+            "node": "Groq Summarize",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Summarize": {
+      "main": [
+        [
+          {
+            "node": "Groq Insights",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Insights": {
+      "main": [
+        [
+          {
+            "node": "Google Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Sheets": {
+      "main": [
+        [
+          {
+            "node": "Send Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {},
+  "staticData": null,
+  "pinData": {},
+  "active": false
+}
