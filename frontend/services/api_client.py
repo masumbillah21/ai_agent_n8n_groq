@@ -10,5 +10,12 @@ def send_article_request(email, article_url):
         "article_url": article_url
     }
 
-    response = requests.post(BACKEND_URL, json=payload)
-    return response.json()
+    try:
+        response = requests.post(BACKEND_URL, json=payload, timeout=20)
+        response.raise_for_status()
+        return response.json()
+    except requests.RequestException as exc:
+        return {
+            "status": "error",
+            "message": f"Backend request failed: {exc}"
+        }

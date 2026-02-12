@@ -32,6 +32,7 @@ Google Sheets (Append Row)
         ↓
 Email to User
 ```
+
 ---
 
 ## Required API Keys
@@ -171,6 +172,43 @@ Use expression in n8n:
    - n8n execution
    - Google Sheets updated
    - Email received
+
+---
+
+## Webhook Troubleshooting
+
+To watch n8n runtime errors directly in Docker logs:
+
+```bash
+docker compose logs -f n8n
+```
+
+If you see this in n8n logs:
+
+`Received request for unknown webhook: The requested webhook "POST article-processor" is not registered.`
+
+Use this checklist:
+
+1. Confirm the workflow contains a `Webhook` node with path `article-processor` and method `POST`.
+2. Ensure workflow is **Active** when using:
+   - `http://localhost:5678/webhook/article-processor`
+3. If workflow is not active and you are testing from editor, click **Listen for test event** and use:
+   - `http://localhost:5678/webhook-test/article-processor`
+4. If you already started Docker once, existing `n8n_data` may still contain an old inactive workflow.
+   Activate the workflow in n8n UI, or re-import `n8n/workflow.json`.
+5. Restart backend after changing `N8N_WEBHOOK_URL`.
+
+If n8n logs show:
+
+`Forbidden - perhaps check your credentials?`
+
+Check:
+
+1. In n8n, open **Executions** and confirm which node failed (usually `Google Sheets`).
+2. Share the target Google Sheet with your service account email (for example: `ai-agent@...iam.gserviceaccount.com`) as **Editor**.
+3. In Google Cloud, enable both **Google Sheets API** and **Google Drive API** for the same project as the service account key.
+4. In the `Google Sheets` node, set a valid sheet tab name (for example `Sheet1`) and confirm `documentId` points to an existing sheet.
+5. In n8n credentials, re-test and save the Google credential, then run the workflow again.
 
 ---
 

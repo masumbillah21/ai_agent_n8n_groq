@@ -18,7 +18,7 @@
     },
     {
       "parameters": {
-        "url": "={{$json[\"article_url\"]}}",
+        "url": "={{$json[\"article_url\"] || $json[\"body\"]?.[\"article_url\"]}}",
         "options": {}
       },
       "id": "2",
@@ -32,6 +32,19 @@
     },
     {
       "parameters": {
+        "jsCode": "const items = $input.all();\n\nreturn items.map((item) => {\n  const raw = typeof item.json.body === 'string'\n    ? item.json.body\n    : JSON.stringify(item.json.body || item.json.data || item.json);\n\n  const cleanedText = String(raw)\n    .replace(/<script[\\s\\S]*?<\\/script>/gi, ' ')\n    .replace(/<style[\\s\\S]*?<\\/style>/gi, ' ')\n    .replace(/<[^>]+>/g, ' ')\n    .replace(/\\s+/g, ' ')\n    .trim()\n    .slice(0, 3000);\n\n  return {\n    json: {\n      ...item.json,\n      cleaned_text: cleanedText || 'No article content found'\n    }\n  };\n});"
+      },
+      "id": "7",
+      "name": "Clean HTML",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        600,
+        300
+      ]
+    },
+    {
+      "parameters": {
         "method": "POST",
         "url": "https://api.groq.com/openai/v1/chat/completions",
         "sendHeaders": true,
@@ -39,7 +52,7 @@
           "parameters": [
             {
               "name": "Authorization",
-              "value": "=Bearer {{$env.GROQ_API_KEY}}"
+              "value": "=Bearer <YOUR_GROQ_API_KEY>"
             },
             {
               "name": "Content-Type",
@@ -49,7 +62,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"model\": \"llama-3.1-8b-instant\",\n  \"messages\": [\n    {\n      \"role\": \"user\",\n      \"content\": \"Summarize this article:\\n\\n\" + ($json[\"body\"] || $json[\"data\"] || JSON.stringify($json))\n    }\n  ]\n}",
+        "jsonBody": "={{ JSON.stringify({\n  model: \"llama-3.1-8b-instant\",\n  max_tokens: 350,\n  messages: [\n    {\n      role: \"user\",\n      content: \"Summarize this news article in 5 concise bullet points:\\n\\n\" + ($json[\"cleaned_text\"] || \"No article content found\")\n    }\n  ]\n}) }}",
         "options": {}
       },
       "id": "3",
@@ -70,7 +83,7 @@
           "parameters": [
             {
               "name": "Authorization",
-              "value": "=Bearer {{$env.GROQ_API_KEY}}"
+              "value": "=Bearer <YOUR_GROQ_API_KEY>"
             },
             {
               "name": "Content-Type",
@@ -80,7 +93,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"model\": \"llama-3.1-8b-instant\",\n  \"messages\": [\n    {\n      \"role\": \"user\",\n      \"content\": \"Create 3 key insights from this summary:\\n\\n\" + $json[\"choices\"][0][\"message\"][\"content\"]\n    }\n  ]\n}",
+        "jsonBody": "={{ JSON.stringify({\n  model: \"llama-3.1-8b-instant\",\n  max_tokens: 220,\n  messages: [\n    {\n      role: \"user\",\n      content: \"Create 3 key insights from this summary:\\n\\n\" + ($json[\"choices\"]?.[0]?.[\"message\"]?.[\"content\"] || JSON.stringify($json))\n    }\n  ]\n}) }}",
         "options": {}
       },
       "id": "4",
@@ -100,9 +113,11 @@
         "columns": {
           "mappingMode": "defineBelow",
           "value": {
-            "email": "={{$node[\"Webhook\"].json[\"email\"]}}",
-            "session_id": "={{$node[\"Webhook\"].json[\"session_id\"]}}",
-            "insights": "={{$json[\"choices\"][0][\"message\"][\"content\"]}}"
+            "Session ID": "={{$json[\"session_id\"]}}",
+            "Article URL": "={{$json[\"article_url\"]}}",
+            "Summary": "={{$json[\"summary_text\"]}}",
+            "Insights": "={{$json[\"insights_text\"]}}",
+            "Email": "={{$json[\"recipient_email\"]}}"
           }
         },
         "options": {}
@@ -119,9 +134,10 @@
     {
       "parameters": {
         "fromEmail": "",
-        "toEmail": "={{$node[\"Webhook\"].json[\"email\"]}}",
+        "toEmail": "={{$json[\"recipient_email\"]}}",
         "subject": "Article Insights Ready",
-        "text": "={{$json[\"choices\"][0][\"message\"][\"content\"]}}",
+        "emailFormat": "html",
+        "html": "={{\"<h2>Article Report</h2><p>Hello,</p><p>Here is your processed article report.</p><h3>Summary</h3><p>\" + (($json[\"summary_text\"] || \"N/A\").replace(/\\n/g, \"<br>\")) + \"</p><h3>Insights</h3><p>\" + (($json[\"insights_text\"] || \"N/A\").replace(/\\n/g, \"<br>\")) + \"</p><p>Regards,<br>AI Article Processor</p>\"}}",
         "options": {}
       },
       "id": "6",
@@ -130,6 +146,19 @@
       "typeVersion": 2.1,
       "position": [
         1440,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\nreturn items.map((item) => {\n  const webhook = $node[\"Webhook\"].json?.body || $node[\"Webhook\"].json || {};\n\n  return {\n    json: {\n      ...item.json,\n      recipient_email: webhook.email || \"\",\n      article_url: webhook.article_url || \"\",\n      session_id: webhook.session_id || \"\",\n      summary_text: $node[\"Groq Summarize\"].json?.choices?.[0]?.message?.content || \"\",\n      insights_text: $node[\"Groq Insights\"].json?.choices?.[0]?.message?.content || \"\"\n    }\n  };\n});"
+      },
+      "id": "8",
+      "name": "Prepare Email",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1320,
         300
       ]
     }
@@ -147,6 +176,17 @@
       ]
     },
     "HTTP Scrape": {
+      "main": [
+        [
+          {
+            "node": "Clean HTML",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Clean HTML": {
       "main": [
         [
           {
@@ -172,6 +212,17 @@
       "main": [
         [
           {
+            "node": "Prepare Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Email": {
+      "main": [
+        [
+          {
             "node": "Google Sheets",
             "type": "main",
             "index": 0
@@ -194,5 +245,5 @@
   "settings": {},
   "staticData": null,
   "pinData": {},
-  "active": false
+  "active": true
 }
