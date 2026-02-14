@@ -11,7 +11,13 @@ async def forward_to_n8n(payload):
     async with httpx.AsyncClient() as client:
         try:
             response = await client.post(N8N_WEBHOOK_URL, json=payload)
-            logger.info(f"n8n response: {response.status_code}")
+            preview = (response.text or "").replace("\n", " ")[:300]
+            logger.info(
+                "n8n webhook accepted: status=%s url=%s response=%s",
+                response.status_code,
+                N8N_WEBHOOK_URL,
+                preview,
+            )
             response.raise_for_status()
             return response
         except httpx.HTTPStatusError as e:

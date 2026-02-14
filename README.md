@@ -177,11 +177,40 @@ Use expression in n8n:
 
 ## Webhook Troubleshooting
 
-To watch n8n runtime errors directly in Docker logs:
+To watch clear trigger + execution status logs:
 
 ```bash
-docker compose logs -f n8n
+docker compose logs -f backend n8n \
+  | grep --line-buffered -Ei "Forwarding session|accepted by n8n webhook|webhook|trigger|execution|success|failed|error" \
+  | grep --line-buffered -Evi "python task runner in internal mode|N8N_RUNNERS_ENABLED -> Remove this environment variable"
 ```
+
+This helps you quickly see:
+- which webhook/trigger was called
+- backend session handoff to n8n
+- whether execution finished with success or failed
+
+If logs are still noisy, restart n8n after pulling latest config:
+
+```bash
+docker compose up -d n8n --force-recreate
+```
+
+Optional (faster filtering): install ripgrep and use `rg` instead of `grep`.
+
+If you see this warning:
+
+`Failed to start Python task runner in internal mode ... Python 3 is missing`
+
+on `n8n 2.7.x`, this is expected in internal runner mode and does not block JS code-node workflows. Do not use `N8N_RUNNERS_ENABLED` (deprecated/ignored in this version).
+
+To apply config changes cleanly:
+
+```bash
+docker compose up -d n8n --force-recreate
+```
+
+If you later need Python execution, run task runners in external mode per n8n docs.
 
 If you see this in n8n logs:
 

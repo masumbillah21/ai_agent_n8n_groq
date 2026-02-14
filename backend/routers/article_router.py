@@ -23,6 +23,10 @@ async def process_article(data: ArticleRequest):
     logger.info(f"Forwarding session {session_id} to n8n")
     try:
         await forward_to_n8n(payload)
+        logger.info(
+            "Session %s accepted by n8n webhook (async execution started)",
+            session_id,
+        )
     except httpx.HTTPStatusError as e:
         raise HTTPException(
             status_code=502,
