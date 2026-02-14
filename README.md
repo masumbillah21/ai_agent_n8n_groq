@@ -249,4 +249,4 @@ Fast and cost-effective for summarization & insights.
 
 ## Video Presentation
 
-[https://youtu.be/QbPVbDDxyVM] (AI Article Processing Agent Vedio Presentation)
+[AI Article Processing Agent Video Presentation](https://youtu.be/QbPVbDDxyVM)
