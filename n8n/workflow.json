@@ -113,11 +113,11 @@
         "columns": {
           "mappingMode": "defineBelow",
           "value": {
-            "Session ID": "={{$json[\"session_id\"]}}",
-            "Article URL": "={{$json[\"article_url\"]}}",
-            "Summary": "={{$json[\"summary_text\"]}}",
-            "Insights": "={{$json[\"insights_text\"]}}",
-            "Email": "={{$json[\"recipient_email\"]}}"
+            "Session ID": "={{$node[\"Webhook\"].json?.body?.session_id || $node[\"Webhook\"].json?.session_id || \"\"}}",
+            "Article URL": "={{$node[\"Webhook\"].json?.body?.article_url || $node[\"Webhook\"].json?.article_url || \"\"}}",
+            "Summary": "={{$node[\"Groq Summarize\"].json?.choices?.[0]?.message?.content || \"\"}}",
+            "Insights": "={{$node[\"Groq Insights\"].json?.choices?.[0]?.message?.content || \"\"}}",
+            "Email": "={{$node[\"Webhook\"].json?.body?.email || $node[\"Webhook\"].json?.email || \"\"}}"
           }
         },
         "options": {}
@@ -137,7 +137,7 @@
         "toEmail": "={{$json[\"recipient_email\"]}}",
         "subject": "Article Insights Ready",
         "emailFormat": "html",
-        "html": "={{\"<h2>Article Report</h2><p>Hello,</p><p>Here is your processed article report.</p><h3>Summary</h3><p>\" + (($json[\"summary_text\"] || \"N/A\").replace(/\\n/g, \"<br>\")) + \"</p><h3>Insights</h3><p>\" + (($json[\"insights_text\"] || \"N/A\").replace(/\\n/g, \"<br>\")) + \"</p><p>Regards,<br>AI Article Processor</p>\"}}",
+        "html": "={{\"<h3>Summary</h3><p>\" + (($json[\"summary_text\"] || \"N/A\").replace(/\\n/g, \"<br>\")) + \"</p><h3>Insights</h3><p>\" + (($json[\"insights_text\"] || \"N/A\").replace(/\\n/g, \"<br>\")) + \"</p>\"}}",
         "options": {}
       },
       "id": "6",
@@ -151,7 +151,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const items = $input.all();\n\nreturn items.map((item) => {\n  const webhook = $node[\"Webhook\"].json?.body || $node[\"Webhook\"].json || {};\n\n  return {\n    json: {\n      ...item.json,\n      recipient_email: webhook.email || \"\",\n      article_url: webhook.article_url || \"\",\n      session_id: webhook.session_id || \"\",\n      summary_text: $node[\"Groq Summarize\"].json?.choices?.[0]?.message?.content || \"\",\n      insights_text: $node[\"Groq Insights\"].json?.choices?.[0]?.message?.content || \"\"\n    }\n  };\n});"
+        "jsCode": "const items = $input.all();\n\nreturn items.map(() => {\n  const webhook = $node[\"Webhook\"].json?.body || $node[\"Webhook\"].json || {};\n\n  return {\n    json: {\n      recipient_email: webhook.email || \"\",\n      article_url: webhook.article_url || \"\",\n      session_id: webhook.session_id || \"\",\n      summary_text: $node[\"Groq Summarize\"].json?.choices?.[0]?.message?.content || \"\",\n      insights_text: $node[\"Groq Insights\"].json?.choices?.[0]?.message?.content || \"\"\n    }\n  };\n});"
       },
       "id": "8",
       "name": "Prepare Email",
